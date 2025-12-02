@@ -1,0 +1,127 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish]{babel}
+\usepackage{amsmath}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\begin{document}
+
+\section*{Cambios que hicimos en el proyecto}
+
+\begin{itemize}
+    \item Añadimos la función \texttt{extract\_terminals} para extraer los terminales automáticamente desde las producciones. Esto evita duplicar lógica, reduce errores y facilita construir las tablas LL(1) y SLR(1).
+
+    \item En el archivo \texttt{main.py}, agregamos bloques para imprimir las tablas:
+    \begin{itemize}
+        \item Si la gramática es LL(1), se muestra la tabla LL(1).
+        \item Si es SLR(1), se imprimen las tablas ACTION y GOTO.
+    \end{itemize}
+
+    \item Ejemplo de c\'odigo:
+    \begin{verbatim}
+if is_ll1:
+    print("LL(1) Table:")
+    for nonterminal, rules in ll1_table.items():
+        for terminal, production in rules.items():
+            print(f"{nonterminal} -> {terminal}: {production}")
+
+if is_slr1:
+    print("ACTION Table:")
+    for state, actions in slr_ACTION.items():
+        print(f"State {state}: {actions}")
+
+    print("GOTO Table:")
+    for state, gotos in slr_GOTO.items():
+        print(f"State {state}: {gotos}")
+    \end{verbatim}
+\end{itemize}
+
+\section*{Aspectos te\'oricos fundamentales (en lenguaje de estudiante)}
+
+\subsection*{\textbf{\underline{\large\textsf{ analizador sintáctico}}}}
+Un analizador sint\'actico (parser) es un programa que se encarga de revisar si una cadena de s\'imbolos cumple con las reglas de una gram\'atica. Existen analizadores \textbf{ascendentes} (como SLR(1)) y \textbf{descendentes} (como LL(1)).
+
+\subsection*{\textbf{\underline{\large\textsf{Tabla LL(1)}}}}
+La tabla LL(1) se usa para analizar una cadena \textbf{de arriba hacia abajo}, sin retroceso.
+
+\begin{itemize}
+    \item Para construirla se usan los conjuntos \textbf{FIRST} y \textbf{FOLLOW}.
+    \item Si un terminal est\'a en FIRST de una producci\'on, esa producci\'on se agrega a la tabla.
+    \item Si una producci\'on puede ir a vac\'io (\(\varepsilon\)), tambi\'en se usa FOLLOW del no terminal.
+    \item Si una celda tiene m\'as de una producci\'on, hay \textbf{conflicto} y la gram\'atica no es LL(1).
+\end{itemize}
+
+\subsection*{\textbf{\underline{\large\textsf{Conjuntos FIRST y FOLLOW}}}}
+\begin{itemize}
+    \item \textbf{FIRST(X)}: todos los terminales que pueden aparecer al principio de las derivaciones de X.
+    \item \textbf{FOLLOW(X)}: todos los terminales que pueden aparecer inmediatamente despu\'es de X en alguna producci\'on.
+    \item Estos conjuntos se usan para construir tanto la tabla LL(1) como para llenar correctamente la tabla ACTION del SLR(1).
+\end{itemize}
+
+\subsection*{\textbf{\underline{\large\textsf{¿Qué es un analizador SLR(1)?}}}}
+Un analizador SLR(1) funciona \textbf{de abajo hacia arriba}. Usa dos tablas: \textbf{ACTION} y \textbf{GOTO}.
+
+\subsection*{\textbf{Tabla ACTION (SLR(1))}}
+\begin{itemize}
+    \item Le dice al parser qu\'e hacer seg\'un el estado actual y el s\'imbolo de entrada.
+    \item Puede tener tres acciones:
+    \begin{itemize}
+        \item \textbf{shift}: avanzar y pasar a un nuevo estado.
+        \item \textbf{reduce}: aplicar una producci\'on (seg\'un el FOLLOW del no terminal).
+        \item \textbf{accept}: cuando la cadena es reconocida.
+    \end{itemize}
+    \item Se llena usando el aut\'omata LR(0) y los conjuntos FOLLOW.
+\end{itemize}
+
+\subsection*{\textbf{Tabla GOTO (SLR(1))}}
+\begin{itemize}
+    \item Dice a qu\'e estado ir cuando se ha hecho una reducci\'on a un no terminal.
+    \item Por ejemplo, si desde el estado 0 se reduce a un T, GOTO[0, T] dice a qu\'e estado ir ahora.
+\end{itemize}
+
+\subsection*{\textbf{¿Cu\'ando es LL(1) o SLR(1)?}}
+\begin{itemize}
+    \item Una gram\'atica es \textbf{LL(1)} si:
+    \begin{itemize}
+        \item No tiene recursi\'on por la izquierda.
+        \item No tiene ambig\"uedad.
+        \item La tabla LL(1) no tiene conflictos.
+    \end{itemize}
+    \item Una gram\'atica es \textbf{SLR(1)} si:
+    \begin{itemize}
+        \item El aut\'omata LR(0) no produce conflictos en la tabla ACTION.
+        \item Las reducciones se pueden decidir solo con FOLLOW.
+    \end{itemize}
+\end{itemize}
+
+\section*{Sustentaci\'on te\'orica y t\'ecnica del proyecto}
+
+Este proyecto permite identificar si una gram\'atica es LL(1), SLR(1), ambas o ninguna. Luego construye las tablas correspondientes y permite analizar cadenas paso a paso.
+
+\subsection*{1. Implementaci\'on LL(1)}
+\begin{itemize}
+    \item En \texttt{ll1\_parser.py} se construye la tabla LL(1).
+    \item Se usa \texttt{first\_follow.py} para calcular los conjuntos FIRST y FOLLOW.
+    \item Si hay conflicto en una celda, la gram\'atica no es LL(1).
+\end{itemize}
+
+\subsection*{2. Implementaci\'on SLR(1)}
+\begin{itemize}
+    \item En \texttt{slr1\_parser.py} se construye el aut\'omata LR(0).
+    \item Se crean las tablas ACTION y GOTO en \texttt{build\_slr\_tables}.
+    \item Las acciones se asignan seg\'un si hay un \texttt{shift}, una \texttt{reduce} o un \texttt{accept}, dependiendo de la posici\'on del punto y los FOLLOW.
+\end{itemize}
+
+\subsection*{3. Integraci\'on en el sistema}
+\begin{itemize}
+    \item En \texttt{main.py} se orquesta todo:
+    \begin{itemize}
+        \item Se lee la gram\'atica.
+        \item Se calculan FIRST y FOLLOW.
+        \item Se verifica si es LL(1), SLR(1), ambas o ninguna.
+        \item Se imprimen las tablas LL(1), ACTION y GOTO.
+        \item Se permite al usuario ingresar una cadena para analizarla paso a paso.
+    \end{itemize}
+\end{itemize}
+
+\end{document}
